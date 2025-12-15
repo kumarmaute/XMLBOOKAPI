@@ -1,0 +1,12 @@
+[
+  {
+    "ContainingType": "XmlBooksApi.Controllers.BooksController",
+    "Method": "GetValidBooksAsync",
+    "RelativePath": "books/valid",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  }
+]

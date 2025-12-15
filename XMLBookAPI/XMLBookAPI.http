@@ -1,0 +1,6 @@
+@XMLBookAPI_HostAddress = http://localhost:5287
+
+GET {{XMLBookAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

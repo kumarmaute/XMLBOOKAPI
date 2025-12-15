@@ -1,0 +1,25 @@
+﻿<catalog>
+	<book>
+		<title>Clean Code</title>
+		<author>Robert C. Martin</author>
+		<genre>Programming</genre>
+		<year>2008</year>
+		<publisher>https://example.com</publisher>
+	</book>
+
+	<book>
+		<title>Invalid Year Book</title>
+		<author>Unknown</author>
+		<genre>Test</genre>
+		<year>-1</year>
+		<publisher>https://example.com</publisher>
+	</book>
+
+	<book>
+		<title>Invalid Publisher Book</title>
+		<author>Unknown</author>
+		<genre>Test</genre>
+		<year>2022</year>
+		<publisher>ftp://invalid-url</publisher>
+	</book>
+</catalog>
