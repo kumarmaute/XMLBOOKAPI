@@ -16,8 +16,8 @@ public class BooksController : ControllerBase
         _env = env;
     }
 
-    [HttpGet("valid")]
-    public async Task<IActionResult> GetValidBooksAsync()
+    [HttpGet("valid")] 
+    public async Task<IActionResult> GetValidBooksAsync(CancellationToken cancellationToken)
     {
         var response = new BookResponse();
         var filePath = Path.Combine(_env.ContentRootPath, "books.xml");
@@ -42,76 +42,81 @@ public class BooksController : ControllerBase
 
         using var reader = XmlReader.Create(stream, settings);
 
-        string? title = null, author = null, genre = null, yearText = null, publisher = null;
+        // Move to first book
+        if (!reader.ReadToDescendant("book"))
+            return Ok(response);
 
-        while (await reader.ReadAsync())
+        do
         {
-            if (reader.NodeType == XmlNodeType.Element && reader.Name == "book")
+            cancellationToken.ThrowIfCancellationRequested();
+
+            using var bookReader = reader.ReadSubtree();
+            await bookReader.ReadAsync();
+
+            string? title = null, author = null, genre = null, yearText = null, publisher = null;
+
+            while (await bookReader.ReadAsync())
             {
-                title = author = genre = yearText = publisher = null;
+                cancellationToken.ThrowIfCancellationRequested();
 
-                while (await reader.ReadAsync())
+                if (bookReader.NodeType != XmlNodeType.Element)
+                    continue;
+
+                switch (bookReader.Name)
                 {
-                    if (reader.NodeType == XmlNodeType.EndElement &&
-                        reader.Name == "book")
+                    case "title":
+                        title = await bookReader.ReadElementContentAsStringAsync();
                         break;
-
-                    if (reader.NodeType == XmlNodeType.Element)
-                    {
-                        var elementName = reader.Name;
-
-                        await reader.ReadAsync(); // move to Text node
-
-                        if (reader.NodeType != XmlNodeType.Text)
-                            continue;
-
-                        var value = reader.Value;
-
-                        switch (elementName)
-                        {
-                            case "title": title = value; break;
-                            case "author": author = value; break;
-                            case "genre": genre = value; break;
-                            case "year": yearText = value; break;
-                            case "publisher": publisher = value; break;
-                        }
-                    }
+                    case "author":
+                        author = await bookReader.ReadElementContentAsStringAsync();
+                        break;
+                    case "genre":
+                        genre = await bookReader.ReadElementContentAsStringAsync();
+                        break;
+                    case "year":
+                        yearText = await bookReader.ReadElementContentAsStringAsync();
+                        break;
+                    case "publisher":
+                        publisher = await bookReader.ReadElementContentAsStringAsync();
+                        break;
                 }
-
-                // Validation
-                if (!int.TryParse(yearText, out var year) || year <= 0)
-                {
-                    response.InvalidBooks.Add(new InvalidBook
-                    {
-                        Title = title,
-                        Reason = "Invalid year"
-                    });
-                    continue;
-                }
-
-                if (!Uri.TryCreate(publisher, UriKind.Absolute, out var uri) ||
-                    (uri.Scheme != Uri.UriSchemeHttp &&
-                     uri.Scheme != Uri.UriSchemeHttps))
-                {
-                    response.InvalidBooks.Add(new InvalidBook
-                    {
-                        Title = title,
-                        Reason = "Invalid publisher"
-                    });
-                    continue;
-                }
-
-                response.ValidBooks.Add(new Book
-                {
-                    Title = title!,
-                    Author = author!,
-                    Genre = genre!,
-                    Year = year,
-                    Publisher = publisher!
-                });
             }
-        }
+
+            // Validation
+            if (!int.TryParse(yearText, out var year) || year <= 0)
+            {
+                response.InvalidBooks.Add(new InvalidBook
+                {
+                    Title = title,
+                    Reason = "Invalid year"
+                });
+                continue;
+            }
+
+            if (!Uri.TryCreate(publisher, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != Uri.UriSchemeHttp &&
+                 uri.Scheme != Uri.UriSchemeHttps))
+            {
+                response.InvalidBooks.Add(new InvalidBook
+                {
+                    Title = title,
+                    Reason = "Invalid publisher"
+                });
+                continue;
+            }
+
+            response.ValidBooks.Add(new Book
+            {
+                Title = title,
+                Author = author,
+                Genre = genre,
+                Year = year,
+                Publisher = publisher
+            });
+
+        } while (reader.ReadToNextSibling("book"));
 
         return Ok(response);
     }
+
 }
